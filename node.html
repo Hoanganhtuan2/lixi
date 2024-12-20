@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nhận Lì Xì</title>
+  <style>
+    /* Các kiểu CSS giữ nguyên từ yêu cầu của bạn */
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #fffae3, #ffe4c1);
+      text-align: center;
+      padding: 20px;
+      overflow: hidden;
+      animation: backgroundShift 10s infinite alternate;
+    }
+
+    /* Các lớp CSS cho hoạt ảnh, hiệu ứng nút, và phần giao diện */
+
+    @keyframes backgroundShift {
+      0% { background: linear-gradient(145deg, #fffae3, #ffe4c1); }
+      100% { background: linear-gradient(145deg, #ffd5a8, #fffae3); }
+    }
+
+    /* Các phần giao diện chính, nút, thông báo ... */
+
+    .message {
+      margin-top: 30px;
+      font-size: 1.4em;
+      font-weight: bold;
+      color: #4a4e69;
+      display: none;
+      animation: messageAppear 1.5s forwards;
+    }
+
+    /* Kiểu chữ cho key input, button, và thông báo */
+
+    .key-input, .message {
+      font-family: 'Courier New', monospace;
+      letter-spacing: 2px;
+      font-weight: bold; /* In đậm toàn bộ chữ */
+    }
+
+    /* Các kiểu mới cho bảng sếp hạng */
+
+    .ranking {
+      margin-top: 50px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      border: 2px solid #ffba08;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .ranking-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .ranking-table th, .ranking-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .ranking-table th {
+      background-color: #ffba08;
+      color: white;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="lixi-container">
+    <div class="key-input-container">
+      <input type="text" class="key-input" id="keyInput" placeholder="Nhập Mã Đi Pé">
+    </div>
+    <button class="key-submit" onclick="validateKey()">Mở Lì Xì ❄</button>
+    <div class="message" id="message"></div>
+    <button class="btn-refresh" id="refresh" onclick="refreshPage()">Lấy Lì Xì</button>
+    <div id="fireworks-container"></div>
+  </div>
+
+  <!-- Bảng xếp hạng -->
+  <div class="ranking">
+    <h3>Bảng Sếp Hạng Lì Xì</h3>
+    <table class="ranking-table" id="rankingTable">
+      <thead>
+        <tr>
+          <th>Thứ tự</th>
+          <th>Gmail</th>
+          <th>Số tiền</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Dữ liệu bảng xếp hạng sẽ được điền ở đây -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    let hasOpened = false;
+    let ipAddress = null;
+    let availableKeys = {}; // Để lưu trữ các key và số lượng lượt sử dụng
+    let usersOpened = []; // Lưu trữ người dùng đã mở lì xì (email, tiền, v.v.)
+
+    // Lấy danh sách key từ file
+    fetch("key.txt")
+      .then(response => response.text())
+      .then(data => {
+        const keys = data.split("\n");
+        keys.forEach(key => {
+          const [keyValue, quantity] = key.split(":");
+          availableKeys[keyValue] = parseInt(quantity);
+        });
+      });
+
+    function createFirework() {
+      const firework = document.createElement("div");
+      firework.classList.add("firework");
+      firework.style.left = Math.random() * 100 + "%";
+      firework.style.top = Math.random() * 100 + "%";
+      document.getElementById("fireworks-container").appendChild(firework);
+
+      setTimeout(() => firework.remove(), 1000);
+    }
+
+    function launchFireworks() {
+      setInterval(createFirework, 200);
+    }
+
+    function validateKey() {
+      const key = document.getElementById("keyInput").value;
+      const email = "user@example.com"; // Giả sử email lấy từ input hoặc tài khoản đã đăng nhập
+
+      if (hasOpened) {
+        alert("Bạn đã mở lì xì rồi, chỉ một lần duy nhất!");
+        return;
+      }
+
+      if (key && availableKeys[key] > 0) {
+        const min = 1000;
+        const max = 20000;
+        const amount = Math.floor(Math.random() * (max - min + 1)) + min;
+
+        const messageDiv = document.getElementById("message");
+        const refreshButton = document.getElementById("refresh");
+
+        messageDiv.style.display = "block";
+        refreshButton.style.display = "inline-block";
+        messageDiv.innerHTML = `🎉 Chúc mừng! Trúng Lì Xì <strong style="color: #d62828;">${amount.toLocaleString()}đ</strong>!`;
+
+        document.getElementById("keyInput").style.display = "none";  
+        document.querySelector(".key-submit").style.display = "none";
+
+        hasOpened = true;
+
+        // Giảm lượt sử dụng của key và lưu lại
+        availableKeys[key] -= 1;
+        if (availableKeys[key] === 0) {
+          delete availableKeys[key];
+        }
+        updateKeyFile();
+
+        // Lưu thông tin người dùng mở lì xì
+        saveUserData(email, amount);
+
+        launchFireworks();
+      } else {
+        alert("Mã Không Đúng! Vui Lòng Nhắn Tin Để Lấy Mã");
+      }
+    }
+
+    function updateKeyFile() {
+      const keyFileContent = Object.entries(availableKeys)
+        .map(([key, quantity]) => `${key}:${quantity}`)
+        .join("\n");
+
+      // Gửi nội dung về server (mô phỏng)
+      console.log(keyFileContent); 
+    }
+
+    function saveUserData(email, amount) {
+      // Kiểm tra và lưu trữ thông tin người dùng vào localStorage
+      const userData = {
+        email: email,
+        amount: amount,
+        timestamp: new Date().toISOString()
+      };
+      
+      let existingData = JSON.parse(localStorage.getItem("usersOpened") || "[]");
+      existingData.push(userData);
+      localStorage.setItem("usersOpened", JSON.stringify(existingData));
+
+      updateRankingTable();
+    }
+
+    function updateRankingTable() {
+      // Lấy dữ liệu bảng xếp hạng từ localStorage
+      const usersOpened = JSON.parse(localStorage.getItem("usersOpened") || "[]");
+
+      // Cập nhật bảng xếp hạng
+      const rankingTable = document.getElementById("rankingTable").getElementsByTagName("tbody")[0];
+      rankingTable.innerHTML = ""; // Xóa nội dung cũ
+
+      // Sắp xếp theo số tiền
+      usersOpened.sort((a, b) => b.amount - a.amount);
+
+      usersOpened.slice(0, 10).forEach((user, index) => {
+        const row = rankingTable.insertRow();
+        row.insertCell(0).innerText = index + 1;
+        row.insertCell(1).innerText = user.email.replace(/(.{3}).*(@.*)/, '$1***$2'); // Ẩn 3 ký tự cuối
+        row.insertCell(2).innerText = user.amount.toLocaleString() + 'đ';
+      });
+    }
+
+    function refreshPage() {
+      window.location.reload();
+    }
+
+    // Khởi tạo bảng xếp hạng khi trang được tải
+    window.onload = function() {
+      updateRankingTable();
+    };
+  </script>
+</body>
+</html>
